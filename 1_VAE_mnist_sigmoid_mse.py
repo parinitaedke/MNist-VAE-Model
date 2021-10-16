@@ -19,9 +19,7 @@ CUDA_DEVICE_NUM = 0
 DEVICE = torch.device(f'cuda:{CUDA_DEVICE_NUM}' if torch.cuda.is_available() else 'cpu')
 print('Device:', DEVICE)
 
-print(torch.cuda.is_available())
-
-# Hyperparameters
+# TODO: Hyperparameters
 RANDOM_SEED = 123
 LEARNING_RATE = 0.0005
 BATCH_SIZE = 256
@@ -31,12 +29,13 @@ NUM_EPOCHS = 50
 ### Dataset
 ##########################
 
+# Don't need a validation set since VAEs are unsupervised learning
 train_loader, valid_loader, test_loader = get_dataloaders_mnist(
     batch_size=BATCH_SIZE,
     num_workers=0,
     validation_fraction=0.)
 
-# Checking the dataset
+# Checking the training dataset
 print('Training Set:\n')
 for images, labels in train_loader:
     print('Image batch dimensions:', images.size())
@@ -44,7 +43,7 @@ for images, labels in train_loader:
     print(labels[:10])
     break
 
-# Checking the dataset
+# Checking the validation dataset
 print('\nValidation Set:')
 for images, labels in valid_loader:
     print('Image batch dimensions:', images.size())
@@ -52,7 +51,7 @@ for images, labels in valid_loader:
     print(labels[:10])
     break
 
-# Checking the dataset
+# Checking the testing dataset
 print('\nTesting Set:')
 for images, labels in test_loader:
     print('Image batch dimensions:', images.size())
@@ -65,8 +64,10 @@ for images, labels in test_loader:
 ### MODEL
 ##########################
 
-
 class Reshape(nn.Module):
+    """
+    Reshape image to self.shape
+    """
     def __init__(self, *args):
         super().__init__()
         self.shape = args
@@ -76,6 +77,9 @@ class Reshape(nn.Module):
 
 
 class Trim(nn.Module):
+    """
+    Trims image to 1x28x28
+    """
     def __init__(self, *args):
         super().__init__()
 
@@ -84,9 +88,16 @@ class Trim(nn.Module):
 
 
 class VAE(nn.Module):
+    """
+    Creates a VAE with 4 convolutional layers and
+    """
     def __init__(self):
         super().__init__()
 
+        # Read that LeakyReLU is better than regular ReLU for generative models
+        # LeakyReLU is just that it has a very small slope when x < 0 (compared to ReLU, which has y = 0 when x < 0 )
+
+        # Encoder has 4 convolutional layers and is flattened at the end
         self.encoder = nn.Sequential(
             nn.Conv2d(1, 32, stride=(1, 1), kernel_size=(3, 3), padding=1),
             nn.LeakyReLU(0.01),
@@ -101,6 +112,7 @@ class VAE(nn.Module):
         self.z_mean = torch.nn.Linear(3136, 2)
         self.z_log_var = torch.nn.Linear(3136, 2)
 
+        # Decoder has 4 deconvolutional layers and produces an image of the original dimensions
         self.decoder = nn.Sequential(
             torch.nn.Linear(2, 3136),
             Reshape(-1, 64, 7, 7),
@@ -134,6 +146,7 @@ class VAE(nn.Module):
         return encoded, z_mean, z_log_var, decoded
 
 
+# Instantiate the model
 set_all_seeds(RANDOM_SEED)
 
 model = VAE()
@@ -151,6 +164,7 @@ log_dict = train_vae_v1(num_epochs=NUM_EPOCHS, model=model,
                         skip_epoch_stats=True,
                         logging_interval=50)
 
+# Plot the loss over training time
 plot_training_loss(log_dict['train_reconstruction_loss_per_batch'], NUM_EPOCHS, custom_label=" (reconstruction)")
 plot_training_loss(log_dict['train_kl_loss_per_batch'], NUM_EPOCHS, custom_label=" (KL)")
 plot_training_loss(log_dict['train_combined_loss_per_batch'], NUM_EPOCHS, custom_label=" (combined)")
@@ -168,6 +182,7 @@ plot_latent_space_with_labels(
 plt.legend()
 plt.show()
 
+# Generate a new image from the distribution
 with torch.no_grad():
     new_image = model.decoder(torch.tensor([-0.0, 0.03]).to(DEVICE))
     new_image.squeeze_(0)
@@ -175,6 +190,7 @@ with torch.no_grad():
 plt.imshow(new_image.to('cpu').numpy(), cmap='binary')
 plt.show()
 
+# Sample a bunch of images from the distribution
 for i in range(10):
     plot_images_sampled_from_vae(model=model, device=DEVICE, latent_size=2)
     plt.show()
