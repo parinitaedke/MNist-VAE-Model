@@ -108,13 +108,18 @@ def get_dataloaders_cifar10(batch_size, num_workers=0,
 def get_dataloaders_mnist(batch_size, num_workers=0,
                           validation_fraction=None,
                           train_transforms=None, test_transforms=None):
+    """
+    Get the training, validation (if requested), and testing sets of the MNist dataset.
+    """
 
+    # Apply transforms if applicable
     if train_transforms is None:
         train_transforms = transforms.ToTensor()
 
     if test_transforms is None:
         test_transforms = transforms.ToTensor()
 
+    # Download the dataset if needed
     train_dataset = datasets.MNIST(root='data',
                                    train=True,
                                    transform=train_transforms,
@@ -128,6 +133,7 @@ def get_dataloaders_mnist(batch_size, num_workers=0,
                                   train=False,
                                   transform=test_transforms)
 
+    # Split the training set if a validation set is required
     if validation_fraction is not None:
         num = int(validation_fraction * 60000)
         train_indices = torch.arange(0, 60000 - num)
@@ -157,6 +163,7 @@ def get_dataloaders_mnist(batch_size, num_workers=0,
                              num_workers=num_workers,
                              shuffle=False)
 
+    # Return the training, validation (if required), and testing sets
     if validation_fraction is None:
         return train_loader, test_loader
     else:

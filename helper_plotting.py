@@ -32,7 +32,7 @@ def plot_training_loss(minibatch_losses, num_epochs, averaging_iterations=100, c
     ax1.legend()
 
     ###################
-    # Set scond x-axis
+    # Set second x-axis
     ax2 = ax1.twiny()
     newlabel = list(range(num_epochs+1))
 
@@ -177,13 +177,11 @@ def plot_modified_faces(original, diff,
 
     fig, axes = plt.subplots(nrows=2, ncols=len(diff_coefficients), 
                              sharex=True, sharey=True, figsize=figsize)
-    
 
     for i, alpha in enumerate(diff_coefficients):
         more = original + alpha*diff
         less = original - alpha*diff
-        
-        
+
         if decoding_fn is not None:
             ######################################
             ### Latent -> Original space

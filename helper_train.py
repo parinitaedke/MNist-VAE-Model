@@ -155,6 +155,7 @@ def train_vae_v1(num_epochs, model, optimizer, device,
                 'train_reconstruction_loss_per_batch': [],
                 'train_kl_loss_per_batch': []}
 
+    # Default is MSE loss
     if loss_fn is None:
         loss_fn = F.mse_loss
 
@@ -170,8 +171,7 @@ def train_vae_v1(num_epochs, model, optimizer, device,
             encoded, z_mean, z_log_var, decoded = model(features)
             
             # total loss = reconstruction loss + KL divergence
-            #kl_divergence = (0.5 * (z_mean**2 + 
-            #                        torch.exp(z_log_var) - z_log_var - 1)).sum()
+            # kl_divergence = (0.5 * (z_mean**2 + torch.exp(z_log_var) - z_log_var - 1)).sum()
             kl_div = -0.5 * torch.sum(1 + z_log_var - z_mean**2 - torch.exp(z_log_var), axis=1) # sum over latent dimension
 
             batchsize = kl_div.size(0)
@@ -180,7 +180,9 @@ def train_vae_v1(num_epochs, model, optimizer, device,
             pixelwise = loss_fn(decoded, features, reduction='none')
             pixelwise = pixelwise.view(batchsize, -1).sum(axis=1) # sum over pixels
             pixelwise = pixelwise.mean() # average over batch dimension
-            
+
+            # The reconstruction term weight guides the loss function to care about more reconstruction loss or KL divergence
+            # If reconstruction_term_weight = 1, we care about RL and KL div. equally.
             loss = reconstruction_term_weight*pixelwise + kl_div
             
             optimizer.zero_grad()
